@@ -8,9 +8,11 @@ export async function GET() {
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .limit(20);
+        .limit(20)
+        .order('created_at', { ascending: false }); // sắp xếp mới nhất trước
 
     if (error) {
+        console.error('GET profiles error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -23,22 +25,28 @@ export async function POST(request: Request) {
     let body;
     try {
         body = await request.json();
-    } catch (e) {
+    } catch {
         return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    // Validate cơ bản (nên dùng Zod ở production)
+    if (!body.email || !body.full_name) {
+        return NextResponse.json(
+            { error: 'Missing required fields: email and full_name' },
+            { status: 400 }
+        );
     }
 
     const { data, error } = await supabase
         .from('profiles')
         .insert([body])
-        .select();
+        .select()
+        .single(); // Trả về object thay vì array
 
     if (error) {
+        console.error('POST profile error:', error);
         return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    if (!data || data.length === 0) {
-        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
-    }
-
-    return NextResponse.json(data[0], { status: 201 });
+    return NextResponse.json(data, { status: 201 });
 }
